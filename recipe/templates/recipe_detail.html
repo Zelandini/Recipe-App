@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.name }} • CS235 Recipe Portal{% endblock %}
+
+{% block content %}
+<div class="wrap recipe-page">
+  <!-- Simple Recipe Header -->
+  <header class="recipe-header">
+    <h1 class="recipe-title">
+      <a href="javascript:history.back()" class="back-button">
+        <span class="back-icon">←</span>
+        Back
+      </a>
+      {{ recipe.name }}
+    </h1>
+    <div class="recipe-meta">
+      {% if recipe.category %}<span class="tag">{{ recipe.category }}</span>{% endif %}
+      <span class="tag">by {{ recipe.author }}</span>
+      <span class="tag">Total: {{ recipe.time }}</span>
+      {% if recipe.nutrition and recipe.nutrition.calories is not none %}
+        <span class="tag tag-calories">{{ recipe.nutrition.calories }} kcal</span>
+      {% endif %}
+      <span class="tag">Health Star Rating:
+        {% if recipe.health_star is not none %}
+          {{ recipe.health_star }} Stars
+        {% else %}
+          Health star rating unavailable
+        {% endif %}
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Recipe Content -->
+  <div class="recipe-container">
+    <!-- Left Column: Recipe Image and Description -->
+    <div class="recipe-left">
+      {% if recipe.images and recipe.images[0] %}
+        <div class="recipe-image">
+          <img id="heroImage" src="{{ recipe.images[0] }}" alt="{{ recipe.name }}" loading="lazy">
+        </div>
+
+        {% if recipe.images|length > 1 %}
+          <div class="recipe-thumbs">
+            {% for img in recipe.images %}
+              <img class="thumb {% if loop.index0 == 0 %}active{% endif %}"
+                   src="{{ img }}" alt="thumbnail {{ loop.index }}"
+                   onclick="setHero({{ loop.index0 }})">
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endif %}
+
+      {% if recipe.desc %}
+      <div class="recipe-description">
+        <h2>About this recipe</h2>
+        <p>{{ recipe.desc }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right Column: Nutrition Info -->
+    <div class="recipe-right">
+      {% if recipe.nutrition %}
+      <div class="recipe-nutrition">
+        <h2>Nutrition</h2>
+        <table>
+          <tr><th>Calories</th><td class="calories">{{ recipe.nutrition.calories }}</td></tr>
+          <tr><th>Protein</th><td>{{ recipe.nutrition.protein }} g</td></tr>
+          <tr><th>Fat</th><td>{{ recipe.nutrition.fat }} g</td></tr>
+          <tr><th>Carbs</th><td>{{ recipe.nutrition.carbs }} g</td></tr>
+        </table>
+      </div>
+      {% endif %}
+
+      <!-- Favourite Button Component -->
+      {% if session.username %}
+        <div class="favourite-button-container">
+          {% if is_favourite(recipe.id) %}
+            <!-- Remove from favourites -->
+            <form method="POST" action="{{ url_for('favourites.remove_favourite', recipe_id=recipe.id) }}" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="favourite-btn favourite-btn--active" title="Remove from favourites">
+                <span class="heart-icon">❤️</span>
+                <span class="btn-text">Remove from Favourites</span>
+              </button>
+            </form>
+          {% else %}
+            <!-- Add to favourites -->
+            <form method="POST" action="{{ url_for('favourites.add_favourite', recipe_id=recipe.id) }}" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="favourite-btn favourite-btn--inactive" title="Add to favourites">
+                <span class="heart-icon">🤍</span>
+                <span class="btn-text">Add to Favourites</span>
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      {% else %}
+        <!-- Login prompt for non-authenticated users -->
+        <a href="{{ url_for('authentication_bp.login') }}" class="favourite-btn favourite-btn--login" title="Login to add favourites">
+          <span class="heart-icon">🤍</span>
+          <span class="btn-text">Login to Add Favourites</span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recipe Instructions -->
+  <div class="recipe-sections">
+    {% if recipe.ingredients and recipe.ingredients|length %}
+    <div class="recipe-ingredients">
+      <h2>Ingredients</h2>
+      <ul>
+        {% for ing in recipe.ingredients %}
+        <li>
+          {% if recipe.ingredient_quantities and recipe.ingredient_quantities[loop.index0] %}
+            <span class="quantity">{{ recipe.ingredient_quantities[loop.index0] }}</span> {{ ing }}
+          {% else %}
+            {{ ing }}
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if recipe.instructions and recipe.instructions|length %}
+    <div class="recipe-instructions">
+      <h2>Instructions</h2>
+      <ol>
+        {% for step in recipe.instructions %}
+        <li>
+          {% set parts = step.split(':', 1) %}
+          {% if parts|length == 2 %}
+            <span class="step-title">{{ parts[0] | trim }}</span>
+            <span class="step-content">{{ parts[1] | trim }}</span>
+          {% else %}
+            {{ step }}
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Reviews and Ratings Section -->
+<section class="section--card">
+  <div class="hd">
+    <h2>Reviews & Ratings</h2>
+  </div>
+  <div class="bd">
+    {% set stats = get_review_stats(recipe.id) %}
+
+    {% if stats.total_reviews > 0 %}
+      <div class="reviews-summary">
+        <!-- Average Rating Display -->
+        <div class="rating-display">
+          <div class="rating-number">{{ "%.1f"|format(stats.average_rating) }}</div>
+          <div class="rating-stars">{{ render_stars(stats.average_rating|round|int) }}</div>
+          <div class="rating-count">{{ stats.total_reviews }} review{{ 's' if stats.total_reviews != 1 else '' }}</div>
+        </div>
+
+        <!-- Rating Distribution -->
+        <div class="rating-distribution">
+          {% for rating in [5, 4, 3, 2, 1] %}
+          <div class="rating-bar">
+            <span class="rating-label">{{ rating }} stars</span>
+            <div class="rating-progress">
+              {% set percentage = (stats.rating_distribution[rating] / stats.total_reviews * 100) if stats.total_reviews > 0 else 0 %}
+              <div class="rating-fill" style="width: {{ percentage }}%;"></div>
+            </div>
+            <span class="rating-number-count">{{ stats.rating_distribution[rating] }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-reviews">
+        <div class="empty-reviews-icon">⭐</div>
+        <h3>No reviews yet</h3>
+        <p>Be the first to review this recipe!</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Review Form -->
+{% if session.username %}
+  {% if not user_has_reviewed_recipe(recipe.id) %}
+  <section class="section--card">
+    <div class="hd">
+      <h3>Write a Review</h3>
+    </div>
+    <div class="bd">
+      <form method="POST" action="{{ url_for('reviews.add_review', recipe_id=recipe.id) }}" class="review-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <div class="form-group">
+          <label class="form-label">Rating</label>
+          <div class="star-rating">
+            {% for i in range(1, 6) %}
+            <input type="radio" name="rating" value="{{ i }}" id="star{{ i }}" class="star-input" required>
+            <label for="star{{ i }}" class="star-label" data-rating="{{ i }}">☆</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="comment" class="form-label">Your Review</label>
+          <textarea
+            name="comment"
+            id="comment"
+            required
+            minlength="10"
+            maxlength="500"
+            placeholder="Share your thoughts about this recipe..."
+            class="form-textarea"></textarea>
+          <div class="char-counter">
+            <span id="char-count">0</span>/500 characters (minimum 10)
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Post Review</button>
+      </form>
+    </div>
+  </section>
+  {% else %}
+  <section class="section--card">
+    <div class="bd reviewed-message">
+      <span class="reviewed-icon">✅</span>
+      <p class="muted">You have already reviewed this recipe. Thank you for your feedback!</p>
+    </div>
+  </section>
+  {% endif %}
+{% else %}
+<section class="section--card">
+  <div class="bd login-prompt">
+    <p class="muted">
+      <a href="{{ url_for('authentication_bp.login') }}" class="login-link">Login</a>
+      to write a review for this recipe.
+    </p>
+  </div>
+</section>
+{% endif %}
+
+<!-- Reviews List -->
+{% set reviews = get_reviews_for_display(recipe.id) %}
+{% if reviews %}
+<section class="section--card">
+  <div class="hd">
+    <h3>Reviews ({{ reviews|length }})</h3>
+  </div>
+  <div class="bd">
+    <div class="review-list">
+      {% for review in reviews %}
+      <div class="review-item">
+        <div class="review-header">
+          <div>
+            <div class="review-author">{{ review.user }}</div>
+            <div class="review-stars">{{ render_stars(review.rating) }}</div>
+          </div>
+          <div class="review-date">{{ review.formatted_date }}</div>
+        </div>
+        <p class="review-comment">{{ review.comment }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<script>
+  function setHero(i) {
+    const hero = document.getElementById('heroImage');
+    const thumbs = document.querySelectorAll('.thumb');
+    const src = thumbs[i].getAttribute('src');
+    hero.setAttribute('src', src);
+
+    thumbs.forEach(t => t.classList.remove('active'));
+    thumbs[i].classList.add('active');
+  }
+
+  // Star rating interaction
+  document.addEventListener('DOMContentLoaded', function() {
+    const starLabels = document.querySelectorAll('.star-label');
+    const radioInputs = document.querySelectorAll('input[name="rating"]');
+
+    starLabels.forEach((label, index) => {
+      label.addEventListener('mouseover', function() {
+        highlightStars(index + 1);
+      });
+
+      label.addEventListener('click', function() {
+        const rating = this.getAttribute('data-rating');
+        document.getElementById('star' + rating).checked = true;
+        highlightStars(rating, true);
+      });
+    });
+
+    // Reset highlights on mouse leave
+    const starContainer = document.querySelector('.star-rating');
+    if (starContainer) {
+      starContainer.addEventListener('mouseleave', function() {
+        const checkedInput = document.querySelector('input[name="rating"]:checked');
+        if (checkedInput) {
+          highlightStars(checkedInput.value, true);
+        } else {
+          highlightStars(0);
+        }
+      });
+    }
+
+    function highlightStars(rating, permanent = false) {
+      starLabels.forEach((label, index) => {
+        const star = label.querySelector('span') || label;
+        if (index < rating) {
+          star.style.color = '#fbbf24';
+          star.innerHTML = '★';
+        } else {
+          star.style.color = permanent ? '#e5e7eb' : '#d1d5db';
+          star.innerHTML = '☆';
+        }
+      });
+    }
+
+    // Character counter
+    const commentTextarea = document.getElementById('comment');
+    const charCount = document.getElementById('char-count');
+
+    if (commentTextarea && charCount) {
+      commentTextarea.addEventListener('input', function() {
+        charCount.textContent = this.value.length;
+        charCount.className = 'char-counter';
+
+        // Add appropriate class based on length
+        if (this.value.length < 10) {
+          charCount.classList.add('char-counter--error');
+        } else if (this.value.length > 450) {
+          charCount.classList.add('char-counter--warning');
+        } else {
+          charCount.classList.add('char-counter--success');
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

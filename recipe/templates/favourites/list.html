@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}My Favourites • CS235 Recipe Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="hero hero--centered">
+    <h1 class="hero-title">My Favourite Recipes</h1>
+    <p class="hero-sub lead">Your personal collection of saved recipes</p>
+    {% if favourites %}
+      <div class="pill pill--brand">
+        <span>❤️</span>
+        {{ favourites|length }} favourite{{ 's' if favourites|length != 1 else '' }}
+      </div>
+    {% endif %}
+  </section>
+
+  {% if favourites %}
+    <section class="section">
+      <div class="grid--browse">
+        {% for recipe in favourites %}
+        <article class="card card--browse">
+          {% if recipe.images and recipe.images[0] %}
+            <img src="{{ recipe.images[0] }}" alt="{{ recipe.name }}" class="card-img">
+          {% else %}
+            <div class="card-img empty-image">
+              <span>🍽️</span>
+            </div>
+          {% endif %}
+
+          <div class="card-body">
+            <div class="favourites-header">
+              <h3 class="card-title">
+                <a href="{{ url_for('recipes.detail', recipe_id=recipe.id) }}">{{ recipe.name }}</a>
+              </h3>
+
+              <!-- Remove from favourites button -->
+              <form method="POST" action="{{ url_for('favourites.remove_favourite', recipe_id=recipe.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="remove-favourite-btn" title="Remove from favourites">💔</button>
+              </form>
+            </div>
+
+            <p class="card-meta">By {{ recipe.author }}</p>
+            <p class="card-desc">{{ recipe.desc }}</p>
+
+            <div class="recipe-card-pills">
+              <div class="pill">
+                ⏱️ {{ recipe.time }}
+              </div>
+
+              {% if recipe.nutrition and recipe.nutrition.calories > 0 %}
+                <div class="pill kcal">
+                  🔥 {{ recipe.nutrition.calories }} cal
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="recipe-card-actions">
+              <a href="{{ url_for('recipes.detail', recipe_id=recipe.id) }}" class="view-recipe-btn">
+                View Recipe
+              </a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+  {% else %}
+    <!-- Empty state -->
+    <section class="empty-favourites">
+      <div class="empty-favourites-icon">🍽️</div>
+      <h2>No favourites yet</h2>
+      <p>
+        Start building your personal recipe collection by adding recipes to your favourites as you browse.
+      </p>
+      <a href="{{ url_for('browse.browse') }}" class="browse-recipes-btn">
+        Browse Recipes
+      </a>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

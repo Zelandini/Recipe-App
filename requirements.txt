@@ -1,0 +1,5 @@
+flask-wtf
+pytest
+password-validator
+Flask==3.0.3
+Werkzeug==3.1.3

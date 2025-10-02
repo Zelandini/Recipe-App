@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Browse • CS235 Recipe Portal{% endblock %}
+
+{% block content %}
+<div class="browse">
+  <h1>Browse Recipes</h1>
+
+  <!-- Search Bar -->
+  <div class="search-bar">
+    <form method="get" action="{{ url_for('browse.browse') }}" class="search-form" role="search">
+      <div class="field combobox" data-field="name">
+        <label for="query">Search</label>
+        <input class="cb-input with-icon search" type="text" id="query" name="query"
+               value="{{ query }}" placeholder="Search for recipes"
+               aria-autocomplete="list" aria-expanded="false"
+               aria-owns="cb-list-query" role="combobox">
+        <ul class="cb-list" id="cb-list-query" role="listbox" hidden></ul>
+      </div>
+
+      <div class="field combobox" data-field="category">
+        <label for="category">Category</label>
+        <input class="cb-input" type="text" id="category" name="category"
+               value="{{ category }}" placeholder="Type to search categories"
+               aria-autocomplete="list" aria-expanded="false"
+               aria-owns="cb-list-category" role="combobox">
+        <ul class="cb-list" id="cb-list-category" role="listbox" hidden></ul>
+      </div>
+
+      <div class="field combobox" data-field="author">
+        <label for="author">Author</label>
+        <input class="cb-input" type="text" id="author" name="author"
+               value="{{ author }}" placeholder="Type to search authors"
+               aria-autocomplete="list" aria-expanded="false"
+               aria-owns="cb-list-author" role="combobox">
+        <ul class="cb-list" id="cb-list-author" role="listbox" hidden></ul>
+      </div>
+
+      <div class="field combobox" data-field="ingredient">
+        <label for="ingredient">Ingredient</label>
+        <input class="cb-input" type="text" id="ingredient" name="ingredient"
+               value="{{ ingredient }}" placeholder="Type to search ingredients"
+               aria-autocomplete="list" aria-expanded="false"
+               aria-owns="cb-list-ingredient" role="combobox">
+        <ul class="cb-list" id="cb-list-ingredient" role="listbox" hidden></ul>
+      </div>
+
+      <button type="submit" class="btn--grad">Search</button>
+    </form>
+  </div>
+
+  <!-- Sort Bar -->
+  <div class="sort-bar">
+    <form method="get" action="{{ url_for('browse.browse') }}" class="sort-form">
+      <!-- Preserve current filters while changing sort -->
+      <input type="hidden" name="query" value="{{ query }}">
+      <input type="hidden" name="category" value="{{ category }}">
+      <input type="hidden" name="author" value="{{ author }}">
+      <input type="hidden" name="ingredient" value="{{ ingredient }}">
+      <input type="hidden" name="page" value="{{ page }}">
+
+      <label for="sort">Sort by:</label>
+      <select id="sort" name="sort" onchange="this.form.submit()">
+        <option value="" {{ 'selected' if not sort }}>Default</option>
+        <option value="time_desc" {{ 'selected' if sort == 'time_desc' }}>Total time: High → Low</option>
+        <option value="time_asc"  {{ 'selected' if sort == 'time_asc'  }}>Total time: Low → High</option>
+        <option value="cal_desc" {{ 'selected' if sort == 'cal_desc' }}>Calories: High → Low</option>
+        <option value="cal_asc"  {{ 'selected' if sort == 'cal_asc'  }}>Calories: Low → High</option>
+        <option value="author_az" {{ 'selected' if sort == 'author_az' }}>Author: A → Z</option>
+        <option value="author_za" {{ 'selected' if sort == 'author_za' }}>Author: Z → A</option>
+      </select>
+    </form>
+  </div>
+
+  <!-- Recipes Grid -->
+  <div class="grid grid--browse">
+    {% for r in recipes %}
+    <article class="card card--browse">
+      {% if r.images and r.images[0] %}
+        <a href="{{ url_for('recipes.detail', recipe_id=r.id) }}">
+          <img class="card-img" src="{{ r.images[0] }}" alt="{{ r.name }}">
+        </a>
+      {% endif %}
+      <div class="card-body">
+        <h3 class="card-title">
+          <a href="{{ url_for('recipes.detail', recipe_id=r.id) }}">{{ r.name }}</a>
+        </h3>
+        <p class="card-meta">by {{ r.author }}</p>
+        <p class="card-meta">Total: {{ r.total_time }} min • {{ r.calories }} kcal</p>
+
+        <!-- Health Star Rating Display -->
+        <p class="card-meta">
+          {% if r.health_star is not none %}
+            Health Star: {{ r.health_star }} Stars
+          {% else %}
+            Health star rating unavailable
+          {% endif %}
+        </p>
+
+        {% if r.desc %}
+          <p class="card-desc">{{ r.desc }}</p>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="{{ url_for('browse.browse') }}?page={{ page-1 }}{% if sort %}&sort={{ sort }}{% endif %}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">Prev</a>
+    {% endif %}
+    <span class="page current">{{ page }}</span>
+    {% if page < total_pages %}
+      <a href="{{ url_for('browse.browse') }}?page={{ page+1 }}{% if sort %}&sort={{ sort }}{% endif %}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">Next</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Combobox JS -->
+<script>
+(function(){
+  const DEBOUNCE_MS = 150;
+  const LIMIT = 10;
+
+  const debounce = (fn, ms) => {
+    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  };
+
+  async function fetchOptions(field, q) {
+    const url = new URL("/api/browse/options", window.location.origin);
+    url.searchParams.set("field", field);
+    if (q) url.searchParams.set("q", q);
+    url.searchParams.set("limit", LIMIT);
+    const res = await fetch(url, { headers: { "Accept": "application/json" }});
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  function setupCombobox(root) {
+    const field = root.dataset.field;
+    const input = root.querySelector(".cb-input");
+    const list  = root.querySelector(".cb-list");
+    let activeIndex = -1;
+
+    const hideList = () => {
+      list.hidden = true;
+      list.innerHTML = "";
+      input.setAttribute("aria-expanded", "false");
+    };
+
+    const renderList = (items) => {
+      list.innerHTML = "";
+      items.forEach((val, idx) => {
+        const li = document.createElement("li");
+        li.role = "option";
+        li.tabIndex = -1;
+        li.className = "cb-item";
+        li.textContent = val;
+        li.addEventListener("mousedown", (e) => {
+          e.preventDefault(); // keep focus on input
+          input.value = val;
+          hideList();
+        });
+        list.appendChild(li);
+      });
+      if (items.length) {
+        list.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+      } else {
+        hideList();
+      }
+      activeIndex = -1;
+    };
+
+    const doQuery = debounce(async () => {
+      const q = input.value.trim();
+      const items = await fetchOptions(field === "name" ? "name" : field, q);
+      renderList(items);
+    }, DEBOUNCE_MS);
+
+    input.addEventListener("input", doQuery);
+    input.addEventListener("focus", doQuery);
+    input.addEventListener("keydown", (e) => {
+      const items = list.querySelectorAll(".cb-item");
+      if (list.hidden || !items.length) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeIndex = (activeIndex + 1) % items.length;
+        items[activeIndex].focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIndex = (activeIndex - 1 + items.length) % items.length;
+        items[activeIndex].focus();
+      } else if (e.key === "Enter") {
+        if (activeIndex >= 0) {
+          e.preventDefault();
+          input.value = items[activeIndex].textContent;
+          hideList();
+        }
+      } else if (e.key === "Escape") {
+        hideList();
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!root.contains(e.target)) hideList();
+    });
+  }
+
+  document.querySelectorAll(".combobox").forEach(setupCombobox);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Recipe Portal{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="{{ url_for('home.index') }}">Recipe Portal</a>
+    <nav class="nav" aria-label="Primary">
+      <a href="{{ url_for('home.index') }}">Home</a>
+      <a href="{{ url_for('browse.browse') }}">Browse</a>
+
+      <!-- Favourites link for authenticated users -->
+      {% if session.username %}
+        <a href="{{ url_for('favourites.list') }}">
+          My Favourites
+          {% if favourites_count() > 0 %}
+            <span class="nav-badge">{{ favourites_count() }}</span>
+          {% endif %}
+        </a>
+      {% endif %}
+
+      <!-- Authentication links -->
+      {% if session.username %}
+        <span class="nav-welcome">Welcome, {{ session.username }}</span>
+        <a href="{{ url_for('authentication_bp.logout') }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('authentication_bp.login') }}">Login</a>
+        <a href="{{ url_for('authentication_bp.register') }}">Register</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<!-- Flash messages for site-wide notifications -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+        <div class="flash-message pill {% if category == 'error' %}flash-message--error{% else %}flash-message--success{% endif %}">
+          <span>{% if category == "error" %}⚠️{% else %}✅{% endif %}</span>
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<main class="container">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    Created by cdol502, eejl439 and zgut060
+  </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const flashMessages = document.querySelectorAll('.flash-message');
+
+    flashMessages.forEach(function(message) {
+        // Auto-hide after 3 seconds
+        setTimeout(function() {
+            message.classList.add('fade-out');
+            setTimeout(function() {
+                if (message.parentElement) {
+                    message.remove();
+                }
+            }, 300); // Wait for fade animation to complete
+        }, 3000);
+
+        // Allow manual dismissal by clicking
+        message.addEventListener('click', function() {
+            message.classList.add('fade-out');
+            setTimeout(function() {
+                if (message.parentElement) {
+                    message.remove();
+                }
+            }, 300);
+        });
+    });
+});
+</script>
+
+</body>
+</html>

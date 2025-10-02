@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Home • CS235 Recipe Portal{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1 class="hero-title">Recipe Portal</h1>
+  <p class="hero-sub lead">Welcome to Recipe Portal where simple ingredients turn into unforgettable dishes.</p>
+  <a class="btn" href="{{ url_for('browse.browse') }}">Browse all recipes</a>
+</section>
+
+{% if rod %}
+<section class="section">
+  <h2>Recipe of the Day</h2>
+
+  <article class="rod-card">
+    {% if rod.images and rod.images[0] %}
+      <img class="rod-img"
+           src="{{ rod.images[0] }}"
+           alt="{{ rod.name }}"
+           loading="lazy">
+    {% endif %}
+
+    <div class="rod-body">
+      <h3 class="h2">
+        <a href="{{ url_for('recipes.detail', recipe_id=rod.id) }}">{{ rod.name }}</a>
+      </h3>
+      <p class="muted">By {{ rod.author }}</p>
+      <p>{{ rod.desc }}</p>
+      <a class="link" href="{{ url_for('recipes.detail', recipe_id=rod.id) }}">Cook this →</a>
+    </div>
+
+    {% if rod.nutrition %}
+    <div class="rod-nutri">
+      <table class="nutri horz">
+        <thead>
+          <tr>
+            <th>Calories</th>
+            <th>Protein</th>
+            <th>Fat</th>
+            <th>Carbs</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="kcal">{{ rod.nutrition.calories }}</td>
+            <td>{{ rod.nutrition.protein }} g</td>
+            <td>{{ rod.nutrition.fat }} g</td>
+            <td>{{ rod.nutrition.carbs }} g</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </article>
+</section>
+{% endif %}
+
+<section class="section">
+  <div class="section-head">
+    <h2>Featured Recipes</h2>
+    <a class="link" href="{{ url_for('browse.browse') }}">See all →</a>
+  </div>
+
+  <div class="featured-grid">
+    {% for r in featured %}
+    <article class="feat-card">
+      <a class="feat-thumb" href="{{ url_for('recipes.detail', recipe_id=r.id) }}">
+        {% if r.images and r.images[0] %}
+        <img src="{{ r.images[0] }}" alt="{{ r.name }}" loading="lazy">
+        {% endif %}
+      </a>
+      <div class="feat-body">
+        <h3 class="card-title"><a href="{{ url_for('recipes.detail', recipe_id=r.id) }}">{{ r.name }}</a></h3>
+        <p class="muted">By {{ r.author }}</p>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
