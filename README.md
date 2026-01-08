@@ -1,5 +1,7 @@
 # Recipe Portal
 
+This is a collaborative projects for CS235 at the University of Auckland.
+
 A Flask web application for browsing, reviewing, and favouriting recipes. The project includes
 domain models, repository adapters (database and in-memory), and a UI for searching and viewing
 recipes sourced from a bundled CSV dataset.
