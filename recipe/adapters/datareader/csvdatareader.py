@@ -1,3 +1,4 @@
+# recipe/adapters/datareader/csvdatareader.py
 import os
 import csv
 import ast
@@ -6,16 +7,25 @@ from recipe.domainmodel.author import Author
 from recipe.domainmodel.category import Category
 from recipe.domainmodel.nutrition import Nutrition
 from recipe.domainmodel.recipe import Recipe
+from recipe.domainmodel.recipe_image import RecipeImage
+from recipe.domainmodel.recipe_ingredient import RecipeIngredient
+from recipe.domainmodel.recipe_instruction import RecipeInstruction
 
 
 class CSVDataReader:
-    def __init__(self, csv_filename):
+    def __init__(self, csv_filename, database_mode=False):  # ADDED database_mode parameter
         self.__csv_filename = csv_filename
+        self.__database_mode = database_mode  # ADDED
         self.__authors = {}
         self.__categories = {}
         self.__recipes = []
         self.__nutrition_id_counter = 1
         self.__category_id_counter = 1
+
+        # For database mode
+        self.__recipe_images = []
+        self.__recipe_ingredients = []
+        self.__recipe_instructions = []
 
     def read_csv_file(self):
         with open(self.__csv_filename, 'r', encoding='utf-8') as file:
@@ -87,8 +97,25 @@ class CSVDataReader:
                 instructions=instructions
             )
 
-            author.add_recipe(recipe)
-            category.add_recipe(recipe)
+            # Create helper objects for database mode
+            for idx, img_url in enumerate(images):
+                if img_url and img_url.strip():
+                    self.__recipe_images.append(RecipeImage(recipe_id, img_url.strip(), idx))
+
+            for idx, ing in enumerate(ingredients):
+                qty = ingredient_quantities[idx] if idx < len(ingredient_quantities) else ""
+                if ing and ing.strip():
+                    self.__recipe_ingredients.append(RecipeIngredient(recipe_id, qty, ing.strip(), idx))
+
+            for idx, inst in enumerate(instructions):
+                if inst and inst.strip():
+                    self.__recipe_instructions.append(RecipeInstruction(recipe_id, inst.strip(), idx))
+
+            # ONLY maintain bidirectional relationships in memory mode
+            if not self.__database_mode:
+                author.add_recipe(recipe)
+                category.add_recipe(recipe)
+
             return recipe
 
         except Exception as e:
@@ -123,3 +150,15 @@ class CSVDataReader:
     @property
     def categories(self):
         return list(self.__categories.values())
+
+    @property
+    def recipe_images(self):
+        return self.__recipe_images
+
+    @property
+    def recipe_ingredients(self):
+        return self.__recipe_ingredients
+
+    @property
+    def recipe_instructions(self):
+        return self.__recipe_instructions

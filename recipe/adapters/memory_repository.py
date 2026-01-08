@@ -121,21 +121,40 @@ class MemoryRepository(AbstractRepository):
 
         return filtered_recipes
 
-    # ---------- Reviews ----------
+    def search_recipes_paged(self, query=None, category=None, author=None, ingredient=None, page=1, per_page=12,
+                             sort_by=None, sort_dir="asc"):
+        """In-memory version for tests compatibility."""
+        results = self.search_recipes(query or "", category or "", author or "", ingredient or "")
+        total = len(results)
+        start = (page - 1) * per_page
+        end = start + per_page
+        return results[start:end], total
+
+    from datetime import datetime
+
     def add_review(self, recipe_id: int, user_id: int, rating: int, comment: str):
         user = self.get_user_by_id(user_id)
         recipe = self.get_recipe(recipe_id)
         if not user or not recipe:
             raise ValueError("User or Recipe not found")
 
-        timestamp = datetime.now()
-        review = Review(
+
+        class SimpleReview:
+            def __init__(self, review_id, user, recipe, rating, text, timestamp):
+                self.id = review_id
+                self.user = user
+                self.recipe = recipe
+                self.rating = rating
+                self.text = text
+                self.timestamp = timestamp
+
+        review = SimpleReview(
             review_id=len(self.__reviews) + 1,
             user=user,
             recipe=recipe,
-            timestamp=timestamp,
             rating=rating,
-            text=comment
+            text=comment,
+            timestamp=datetime.now()
         )
 
         if recipe_id not in self.__reviews:

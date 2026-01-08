@@ -69,8 +69,12 @@ def add_review(recipe_id):
             return redirect(request.referrer or url_for('recipes.detail', recipe_id=recipe_id))
 
         # Add the review
-        reviews_services.add_review(user_id, recipe_id, rating, comment, current_app.repository)
-        flash("Review posted successfully!", "success")
+        updated = reviews_services.add_review(user_id, recipe_id, rating, comment, current_app.repository)
+
+        if updated:
+            flash("Your review has been updated!", "success")
+        else:
+            flash("Review posted successfully!", "success")
 
     except ValueError as e:
         flash(str(e), "error")

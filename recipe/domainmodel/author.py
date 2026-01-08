@@ -36,7 +36,8 @@ class Author:
         from recipe.domainmodel.recipe import Recipe
         if not isinstance(recipe, Recipe):
             raise TypeError("Expected a Recipe instance")
-        if recipe not in self.__recipes:
-            self.__recipes.append(recipe)
-        else:
-            raise ValueError("Recipe already exists for this author")
+        if recipe in self.__recipes:
+            return
+
+        self.__recipes.append(recipe)
+

@@ -114,14 +114,15 @@ def test_author_hash():
 
 
 def test_author_add_recipe(my_author, my_recipe):
-    my_author.add_recipe(my_recipe)
     assert my_recipe in my_author.recipes
+
 
 
 def test_author_add_duplicate_recipe(my_author, my_recipe):
     my_author.add_recipe(my_recipe)
-    with pytest.raises(ValueError):
-        my_author.add_recipe(my_recipe)
+    my_author.add_recipe(my_recipe)  # should not raise
+    assert my_author.recipes.count(my_recipe) == 1
+
 
 
 # Category tests

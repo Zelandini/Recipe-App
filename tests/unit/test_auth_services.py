@@ -73,3 +73,5 @@ def test_repo_user_indexing_by_username_and_id(repo):
     assert u_by_username is not None
     assert u_by_id is not None
     assert u_by_username is u_by_id
+
+pytest.raises(ValueError)

@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from recipe.domainmodel.recipe import Recipe
 from recipe.domainmodel.review import Review
+from typing import List, Optional, Tuple
+
 
 
 class AbstractRepository(ABC):
@@ -19,7 +21,27 @@ class AbstractRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_recipes_by_page(self, page: int, per_page: int) -> List[Recipe]:
+    def get_recipes_by_page(
+            self,
+            page: int,
+            per_page: int,
+            sort_by: Optional[str] = None,
+            sort_dir: Optional[str] = "asc",
+    ) -> List[Recipe]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def search_recipes_paged(
+            self,
+            query: Optional[str],
+            category: Optional[str],
+            author: Optional[str],
+            ingredient: Optional[str],
+            page: int,
+            per_page: int,
+            sort_by: Optional[str] = None,
+            sort_dir: Optional[str] = "asc",
+    ) -> Tuple[List[Recipe], int]:
         raise NotImplementedError
 
     @abstractmethod

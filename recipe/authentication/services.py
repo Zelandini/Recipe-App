@@ -1,5 +1,6 @@
-# recipe/authentication/services.py
 from werkzeug.security import generate_password_hash, check_password_hash
+from dataclasses import dataclass
+from sqlalchemy.exc import IntegrityError
 
 from recipe.adapters.repository import AbstractRepository
 from recipe.domainmodel.user import User
@@ -17,97 +18,71 @@ class AuthenticationException(Exception):
     pass
 
 
+
 def add_user(username: str, password: str, repo: AbstractRepository):
     """
-    Add a new user to the repository.
-
-    Args:
-        username: The user's chosen username
-        password: The user's password (will be hashed)
-        repo: The repository instance
+    Add a new user to the repository, hashing their password.
 
     Raises:
-        NameNotUniqueException: If the username is already taken
+        NameNotUniqueException: If the username already exists
     """
-    # Check that the given user name is available.
-    user = repo.get_user_by_username(username)
-    if user is not None:
+    # Check for duplicate username before DB commit
+    existing = repo.get_user_by_username(username)
+    if existing is not None:
         raise NameNotUniqueException
 
-    # Encrypt password so that the database doesn't store passwords 'in the clear'.
+    # Encrypt password so that the database doesn't store it in clear text
     password_hash = generate_password_hash(password)
-
-    # Create and store the new User, with password encrypted.
     user = User(username, password_hash)
-    repo.add_user(user)
+
+    # Add to repository with DB integrity safety
+    try:
+        repo.add_user(user)
+    except IntegrityError:
+        # In case of race condition with unique constraint
+        raise NameNotUniqueException
 
 
 def get_user(username: str, repo: AbstractRepository):
     """
-    Get user information by username.
-
-    Args:
-        username: The username to look up
-        repo: The repository instance
-
-    Returns:
-        dict: User information dictionary
+    Retrieve a user by username.
 
     Raises:
-        UnknownUserException: If the user doesn't exist
+        UnknownUserException: If user not found
     """
     user = repo.get_user_by_username(username)
     if user is None:
         raise UnknownUserException
-
     return user_to_dict(user)
 
 
 def authenticate_user(username: str, password: str, repo: AbstractRepository):
     """
-    Authenticate a user with username and password.
-
-    Args:
-        username: The username
-        password: The password to verify
-        repo: The repository instance
-
-    Returns:
-        User: The authenticated user object
+    Authenticate user credentials using password hashing.
 
     Raises:
-        UnknownUserException: If the user doesn't exist
-        AuthenticationException: If the password is incorrect
+        UnknownUserException: If username not found
+        AuthenticationException: If password mismatch
     """
-    authenticated = False
-
     user = repo.get_user_by_username(username)
-    if user is not None:
-        authenticated = check_password_hash(user.password, password)
-
-    if not authenticated:
+    if user is None:
         raise AuthenticationException
 
-    # Return the user object for session storage
+    # Verify hashed password
+    if not check_password_hash(user.password, password):
+        raise AuthenticationException
+
+    # Return full user model for session tracking
     return user
 
 
-# ===================================================
-# Functions to convert model entities to dictionaries
-# ===================================================
-
+# ===============================
+# Helper Conversion
+# ===============================
 def user_to_dict(user: User):
-    """
-    Convert a User object to a dictionary representation.
-
-    Args:
-        user: The User object to convert
-
-    Returns:
-        dict: User information as dictionary
-    """
-    user_dict = {
-        'username': user.username,
-        'password': user.password  # This is the hashed password
+    """Convert a User object to a dictionary representation."""
+    return {
+        "id": getattr(user, "id", None),
+        "username": user.username,
+        "password": user.password,  # hashed password for completeness
     }
-    return user_dict

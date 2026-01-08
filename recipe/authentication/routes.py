@@ -4,6 +4,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
+from werkzeug.security import generate_password_hash, check_password_hash
+from recipe.domainmodel.user import User
+
 
 from password_validator import PasswordValidator
 import recipe.authentication.services as services
@@ -21,7 +24,7 @@ class PasswordValid:
         schema = PasswordValidator()
         schema \
             .min(8) \
-            .has().uppercase() \
+             .has().uppercase() \
             .has().lowercase() \
             .has().digits()
         if not schema.validate(field.data):

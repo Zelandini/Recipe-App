@@ -49,27 +49,44 @@
   </div>
 
   <!-- Sort Bar -->
-  <div class="sort-bar">
-    <form method="get" action="{{ url_for('browse.browse') }}" class="sort-form">
-      <!-- Preserve current filters while changing sort -->
-      <input type="hidden" name="query" value="{{ query }}">
-      <input type="hidden" name="category" value="{{ category }}">
-      <input type="hidden" name="author" value="{{ author }}">
-      <input type="hidden" name="ingredient" value="{{ ingredient }}">
-      <input type="hidden" name="page" value="{{ page }}">
+<div class="sort-bar">
+  <form method="get" action="{{ url_for('browse.browse') }}" class="sort-form">
+    <!-- Preserve current filters while changing sort -->
+    <input type="hidden" name="query" value="{{ query }}">
+    <input type="hidden" name="category" value="{{ category }}">
+    <input type="hidden" name="author" value="{{ author }}">
+    <input type="hidden" name="ingredient" value="{{ ingredient }}">
+    <input type="hidden" name="page" value="{{ page }}">
 
-      <label for="sort">Sort by:</label>
-      <select id="sort" name="sort" onchange="this.form.submit()">
-        <option value="" {{ 'selected' if not sort }}>Default</option>
-        <option value="time_desc" {{ 'selected' if sort == 'time_desc' }}>Total time: High → Low</option>
-        <option value="time_asc"  {{ 'selected' if sort == 'time_asc'  }}>Total time: Low → High</option>
-        <option value="cal_desc" {{ 'selected' if sort == 'cal_desc' }}>Calories: High → Low</option>
-        <option value="cal_asc"  {{ 'selected' if sort == 'cal_asc'  }}>Calories: Low → High</option>
-        <option value="author_az" {{ 'selected' if sort == 'author_az' }}>Author: A → Z</option>
-        <option value="author_za" {{ 'selected' if sort == 'author_za' }}>Author: Z → A</option>
-      </select>
-    </form>
-  </div>
+    <label for="sort">Sort by:</label>
+    <select id="sort" name="sort">
+      <option value="name"     {{ 'selected' if sort=='name' }}>Name</option>
+      <option value="rating"   {{ 'selected' if sort=='rating' }}>Rating</option>
+      <option value="author"   {{ 'selected' if sort=='author' }}>Author</option>
+      <option value="category" {{ 'selected' if sort=='category' }}>Category</option>
+      <!-- Uncomment if you want ID sort:
+      <option value="id"       {{ 'selected' if sort=='id' }}>ID</option>
+      -->
+    </select>
+
+    <label for="dir" class="sr-only">Direction</label>
+    <select id="dir" name="dir">
+      <option value="asc"  {{ 'selected' if dir=='asc' }}>Asc</option>
+      <option value="desc" {{ 'selected' if dir=='desc' }}>Desc</option>
+    </select>
+
+    <!-- Page size -->
+    <label for="size" class="sr-only">Page size</label>
+    <select id="size" name="size">
+      <option value="12" {{ 'selected' if per_page==12 }}>12</option>
+      <option value="20" {{ 'selected' if per_page==20 }}>20</option>
+      <option value="40" {{ 'selected' if per_page==40 }}>40</option>
+    </select>
+
+    <button type="submit" class="btn--grad">Apply</button>
+  </form>
+</div>
+
 
   <!-- Recipes Grid -->
   <div class="grid grid--browse">
@@ -105,16 +122,25 @@
   </div>
 
   <!-- Pagination -->
-  <div class="pagination">
-    {% if page > 1 %}
-      <a href="{{ url_for('browse.browse') }}?page={{ page-1 }}{% if sort %}&sort={{ sort }}{% endif %}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">Prev</a>
-    {% endif %}
-    <span class="page current">{{ page }}</span>
-    {% if page < total_pages %}
-      <a href="{{ url_for('browse.browse') }}?page={{ page+1 }}{% if sort %}&sort={{ sort }}{% endif %}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">Next</a>
-    {% endif %}
-  </div>
+<div class="pagination">
+  {% set prev_page = page-1 if page>1 else 1 %}
+  {% set next_page = page+1 if page<total_pages else total_pages %}
+
+  <a class="page first" href="{{ url_for('browse.browse') }}?page=1&size={{ per_page }}&sort={{ sort }}&dir={{ dir }}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">« First</a>
+
+  {% if page > 1 %}
+    <a class="page prev" href="{{ url_for('browse.browse') }}?page={{ prev_page }}&size={{ per_page }}&sort={{ sort }}&dir={{ dir }}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">‹ Prev</a>
+  {% endif %}
+
+  <span class="page current">Page {{ page }} / {{ total_pages }}</span>
+
+  {% if page < total_pages %}
+    <a class="page next" href="{{ url_for('browse.browse') }}?page={{ next_page }}&size={{ per_page }}&sort={{ sort }}&dir={{ dir }}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">Next ›</a>
+  {% endif %}
+
+  <a class="page last" href="{{ url_for('browse.browse') }}?page={{ total_pages }}&size={{ per_page }}&sort={{ sort }}&dir={{ dir }}{% if query %}&query={{ query|urlencode }}{% endif %}{% if category %}&category={{ category|urlencode }}{% endif %}{% if author %}&author={{ author|urlencode }}{% endif %}{% if ingredient %}&ingredient={{ ingredient|urlencode }}{% endif %}">Last »</a>
 </div>
+
 
 <!-- Combobox JS -->
 <script>
